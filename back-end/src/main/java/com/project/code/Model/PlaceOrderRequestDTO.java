@@ -1,8 +1,12 @@
 package com.project.code.Model;
 
-
 import java.util.List;
 
+import lombok.AllArgsConstructor;
+import lombok.NoArgsConstructor;
+
+@AllArgsConstructor
+@NoArgsConstructor
 public class PlaceOrderRequestDTO {
     private Long storeId;
     private String customerName;
@@ -12,7 +16,16 @@ public class PlaceOrderRequestDTO {
     private List<PurchaseProductDTO> purchaseProduct;
     private Double totalPrice;
 
-    // Getters and Setters
+    public PlaceOrderRequestDTO(Long storeId, String customerName, String customerEmail, String customerPhone,
+            String datetime, List<PurchaseProductDTO> purchaseProduct) {
+        this.storeId = storeId;
+        this.customerName = customerName;
+        this.customerEmail = customerEmail;
+        this.customerPhone = customerPhone;
+        this.datetime = datetime;
+        this.purchaseProduct = purchaseProduct;
+        this.totalPrice = 1.00; // TODO: fix
+    }
 
     public Long getStoreId() {
         return storeId;

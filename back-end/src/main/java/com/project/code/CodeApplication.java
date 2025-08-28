@@ -10,7 +10,7 @@ public class CodeApplication {
 
 	public static void main(String[] args) {
 		SpringApplication.run(CodeApplication.class, args);
-		
+
 	}
 
 }

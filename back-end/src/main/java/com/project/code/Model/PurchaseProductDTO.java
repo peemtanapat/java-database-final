@@ -1,6 +1,8 @@
 package com.project.code.Model;
 
+import lombok.NoArgsConstructor;
 
+@NoArgsConstructor
 public class PurchaseProductDTO {
     private Long id;
     private String name;
@@ -8,7 +10,18 @@ public class PurchaseProductDTO {
     private Integer quantity;
     private Double total;
 
-    // Getters and Setters
+    public PurchaseProductDTO(
+            Long productId,
+            String name,
+            Double price,
+            Integer quantity,
+            Double total) {
+        this.id = productId;
+        this.name = name;
+        this.price = price;
+        this.quantity = quantity;
+        this.total = total;
+    }
 
     public Long getId() {
         return id;
