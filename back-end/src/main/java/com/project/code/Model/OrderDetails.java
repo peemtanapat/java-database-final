@@ -56,11 +56,4 @@ public class OrderDetails {
         this.orderDate = LocalDateTime.now();
     }
 
-    // - A no-argument constructor.
-    // - A parameterized constructor that accepts Customer, Store, totalPrice, and
-    // date as parameters.
-
-    // - Add getter and setter methods for all fields (id, customer, store,
-    // totalPrice, date, orderItems).
-
 }

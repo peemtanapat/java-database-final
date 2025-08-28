@@ -1,113 +1,117 @@
 package com.project.code.Controller;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
 import java.time.LocalDateTime;
 import java.util.List;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.http.MediaType;
-import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.MvcResult;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
-
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.project.code.Model.ApiResponse;
-import com.project.code.Model.Customer;
-import com.project.code.Model.Inventory;
 import com.project.code.Model.OrderDetails;
 import com.project.code.Model.PlaceOrderRequestDTO;
-import com.project.code.Model.Product;
 import com.project.code.Model.PurchaseProductDTO;
-import com.project.code.Model.Store;
-import com.project.code.Repo.CustomerRepository;
-import com.project.code.Repo.InventoryRepository;
-import com.project.code.Repo.OrderDetailsRepository;
-import com.project.code.Repo.OrderItemRepository;
-import com.project.code.Repo.ProductRepository;
-import com.project.code.Repo.StoreRepository;
+import com.project.code.Model.StoreDto;
+import com.project.code.Service.OrderService;
+import com.project.code.Service.StoreService;
 
-@SpringBootTest
-@AutoConfigureMockMvc
+@ExtendWith(MockitoExtension.class)
 class StoreControllerTest {
 
-    @Autowired
-    private MockMvc mockMvc;
+    @Mock
+    private OrderService orderService;
 
-    @Autowired
-    private ObjectMapper objectMapper;
+    @Mock
+    private StoreService storeService;
 
-    @Autowired
-    private InventoryRepository inventoryRepository;
-    @Autowired
-    private OrderDetailsRepository orderDetailsRepository;
-    @Autowired
-    private OrderItemRepository orderItemRepository;
-    @Autowired
-    private ProductRepository productRepository;
-    @Autowired
-    private CustomerRepository customerRepository;
-    @Autowired
-    private StoreRepository storeRepository;
+    @InjectMocks
+    private StoreController storeController;
 
-    private Customer customer1;
-    private Store store1;
-    private Product product1;
-    private Product product2;
+    private PlaceOrderRequestDTO placeOrderRequest;
+    private OrderDetails orderDetails;
+    private StoreDto storeDto;
 
     @BeforeEach
-    void setup() {
-        orderItemRepository.deleteAll();
-        orderDetailsRepository.deleteAll();
-        inventoryRepository.deleteAll();
-        productRepository.deleteAll();
-        storeRepository.deleteAll();
-        customerRepository.deleteAll();
+    void setUp() {
+        placeOrderRequest = new PlaceOrderRequestDTO(
+                1L,
+                "John Doe",
+                "john@example.com",
+                "1234567890",
+                LocalDateTime.now().toString(),
+                List.of(new PurchaseProductDTO(1L, "Product1", 100.0, 2, 200.0)));
 
-        customer1 = customerRepository.save(new Customer("Customer One", "customer1@mail.com", "0939451111"));
-        // create a store
-        store1 = storeRepository.save(new Store("Store1", "111/1 Bangkok"));
-        // create products
-        product1 = productRepository.save(new Product("Product1", "Category1", 250.00, "SKU001"));
-        product2 = productRepository.save(new Product("Product1", "Category1", 300.00, "SKU002"));
-        // create inventory of each product
-        inventoryRepository.save(new Inventory(store1, product1, 2));
-        inventoryRepository.save(new Inventory(store1, product2, 1));
+        orderDetails = new OrderDetails();
+        orderDetails.setId(1L);
+
+        storeDto = new StoreDto("Test Store", "Test Address");
     }
 
     @Test
-    void placeOrder_whenStockIsSufficient() throws Exception {
-        String requestBody = objectMapper.writeValueAsString(new PlaceOrderRequestDTO(
-                store1.getId(),
-                customer1.getName(),
-                customer1.getEmail(),
-                customer1.getPhone(),
-                LocalDateTime.now().toString(),
-                List.of(
-                        new PurchaseProductDTO(product1.getId(), product1.getName(), product1.getPrice(), 2, 500.00),
-                        new PurchaseProductDTO(product2.getId(), product2.getName(), product2.getPrice(), 1, 300.00))));
+    void placeOrder_shouldReturnSuccessResponse_whenOrderIsPlacedSuccessfully() {
+        // Arrange
+        when(orderService.saveOrder(any(PlaceOrderRequestDTO.class))).thenReturn(orderDetails);
 
-        MvcResult mvcResult = mockMvc.perform(post("/store/placeOrder")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(requestBody)
-                .accept(MediaType.APPLICATION_JSON))
-                .andExpect(status().isOk())
-                .andReturn();
+        // Act
+        ApiResponse<OrderDetails> response = storeController.placeOrder(placeOrderRequest);
 
-        String contentAsString = mvcResult.getResponse().getContentAsString();
-        ApiResponse<OrderDetails> response = objectMapper.readValue(
-                contentAsString,
-                new TypeReference<ApiResponse<OrderDetails>>() {
-                });
-
+        // Assert
         assertThat(response.getStatus()).isEqualTo("success");
         assertThat(response.getMessage()).isEqualTo("Place order successfully");
+        assertThat(response.getData()).isEqualTo(orderDetails);
+        verify(orderService).saveOrder(any(PlaceOrderRequestDTO.class));
+    }
+
+    @Test
+    void addStore_shouldReturnSuccessResponse_whenStoreIsAddedSuccessfully() {
+        // Arrange
+        when(storeService.addStore(any(StoreDto.class))).thenReturn(true);
+
+        // Act
+        ApiResponse<Boolean> response = storeController.addStore(storeDto);
+
+        // Assert
+        assertThat(response.getStatus()).isEqualTo("success");
+        assertThat(response.getMessage()).isEqualTo("add a new store successfully");
+        assertThat(response.getData()).isTrue();
+        verify(storeService).addStore(any(StoreDto.class));
+    }
+
+    @Test
+    void validateStore_shouldReturnSuccessResponse_whenStoreExists() {
+        // Arrange
+        when(storeService.isExistStore(1L)).thenReturn(true);
+
+        // Act
+        ApiResponse<Boolean> response = storeController.validateStore(1L);
+
+        // Assert
+        assertThat(response.getStatus()).isEqualTo("success");
+        assertThat(response.getMessage()).isEqualTo("validate store successfully");
+        assertThat(response.getData()).isTrue();
+        verify(storeService).isExistStore(1L);
+    }
+
+    @Test
+    void validateStore_shouldReturnSuccessResponse_whenStoreDoesNotExist() {
+        // Arrange
+        when(storeService.isExistStore(1L)).thenReturn(false);
+
+        // Act
+        ApiResponse<Boolean> response = storeController.validateStore(1L);
+
+        // Assert
+        assertThat(response.getStatus()).isEqualTo("success");
+        assertThat(response.getMessage()).isEqualTo("validate store successfully");
+        assertThat(response.getData()).isFalse();
+        verify(storeService).isExistStore(1L);
     }
 }

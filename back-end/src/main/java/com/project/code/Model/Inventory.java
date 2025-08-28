@@ -1,7 +1,6 @@
 package com.project.code.Model;
 
 import com.fasterxml.jackson.annotation.JsonBackReference;
-import com.fasterxml.jackson.annotation.JsonManagedReference;
 
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -9,6 +8,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
+import jakarta.validation.constraints.Min;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -36,24 +36,23 @@ public class Inventory implements AutoCloseable {
    @JoinColumn(name = "product_id")
    @JsonBackReference("inventory-product")
    private Product product;
-   // 2. Add 'product' field:
-   // - Type: private Product
-   // - This field will represent the product associated with the inventory entry.
-   // - Use @ManyToOne to establish a many-to-one relationship with the Product
-   // entity.
 
-   // 3. Add 'store' field:
-   // - Type: private Store
-   // - This field will represent the store where the inventory is located.
-   // - Use @ManyToOne to establish a many-to-one relationship with the Store
-   // entity.
-
+   @Min(value = 0, message = "Stock level cannot be negative")
    private int stockLevel;
 
    public Inventory(Store store, Product product, int stockLevel) {
-      // TODO: validate stockLevel never be negative
+      if (stockLevel < 0) {
+         throw new IllegalArgumentException("Stock level cannot be negative");
+      }
       this.store = store;
       this.product = product;
+      this.stockLevel = stockLevel;
+   }
+
+   public void setStockLevel(int stockLevel) {
+      if (stockLevel < 0) {
+         throw new IllegalArgumentException("Stock level cannot be negative");
+      }
       this.stockLevel = stockLevel;
    }
 

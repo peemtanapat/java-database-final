@@ -1,58 +1,246 @@
 package com.project.code.Controller;
 
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
+import com.project.code.Model.CombinedRequest;
+import com.project.code.Model.Inventory;
+import com.project.code.Model.Product;
+import com.project.code.Repo.InventoryRepository;
+import com.project.code.Repo.ProductRepository;
+import com.project.code.Service.ServiceClass;
+
+import lombok.RequiredArgsConstructor;
+
+@RequiredArgsConstructor
+@RestController
+@RequestMapping("/inventory")
 public class InventoryController {
-// 1. Set Up the Controller Class:
-//    - Annotate the class with `@RestController` to indicate that this is a REST controller, which handles HTTP requests and responses.
-//    - Use `@RequestMapping("/inventory")` to set the base URL path for all methods in this controller. All endpoints related to inventory will be prefixed with `/inventory`.
 
+    private final ProductRepository productRepository;
+    private final InventoryRepository inventoryRepository;
+    private final ServiceClass serviceClass;
 
-// 2. Autowired Dependencies:
-//    - Autowire necessary repositories and services:
-//      - `ProductRepository` will be used to interact with product data (i.e., finding, updating products).
-//      - `InventoryRepository` will handle CRUD operations related to the inventory.
-//      - `ServiceClass` will help with the validation logic (e.g., validating product IDs and inventory data).
+    @PutMapping("/update")
+    public ResponseEntity<Map<String, Object>> updateInventory(@RequestBody CombinedRequest combinedRequest) {
+        try {
+            Product product = combinedRequest.getProduct();
+            Inventory inventory = combinedRequest.getInventory();
 
+            // Validate product ID
+            if (!serviceClass.ValidateProductId(product.getId())) {
+                Map<String, Object> errorResponse = new HashMap<>();
+                errorResponse.put("message", "Product not found with ID: " + product.getId());
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorResponse);
+            }
 
-// 3. Define the `updateInventory` Method:
-//    - This method handles HTTP PUT requests to update inventory for a product.
-//    - It takes a `CombinedRequest` (containing `Product` and `Inventory`) in the request body.
-//    - The product ID is validated, and if valid, the inventory is updated in the database.
-//    - If the inventory exists, update it and return a success message. If not, return a message indicating no data available.
+            // Check if inventory exists
+            Inventory existingInventory = serviceClass.getInventoryId(inventory);
 
+            Map<String, Object> response = new HashMap<>();
+            if (existingInventory != null) {
+                // Update existing inventory
+                existingInventory.setStockLevel(inventory.getStockLevel());
+                inventoryRepository.save(existingInventory);
+                response.put("message", "Inventory updated successfully");
+            } else {
+                response.put("message", "No inventory data available for this product and store combination");
+            }
 
-// 4. Define the `saveInventory` Method:
-//    - This method handles HTTP POST requests to save a new inventory entry.
-//    - It accepts an `Inventory` object in the request body.
-//    - It first validates whether the inventory already exists. If it exists, it returns a message stating so. If it doesn’t exist, it saves the inventory and returns a success message.
+            return ResponseEntity.ok(response);
 
+        } catch (Exception e) {
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("message", "Error updating inventory: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
+        }
+    }
 
-// 5. Define the `getAllProducts` Method:
-//    - This method handles HTTP GET requests to retrieve products for a specific store.
-//    - It uses the `storeId` as a path variable and fetches the list of products from the database for the given store.
-//    - The products are returned in a `Map` with the key `"products"`.
+    @PostMapping("/save")
+    public ResponseEntity<Map<String, Object>> saveInventory(@RequestBody Inventory inventory) {
+        try {
+            // Validate if inventory already exists
+            boolean inventoryExists = !serviceClass.validateInventory(inventory);
 
+            Map<String, Object> response = new HashMap<>();
+            if (inventoryExists) {
+                response.put("message", "Inventory already exists for this product and store combination");
+                return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
+            }
 
-// 6. Define the `getProductName` Method:
-//    - This method handles HTTP GET requests to filter products by category and name.
-//    - If either the category or name is `"null"`, adjust the filtering logic accordingly.
-//    - Return the filtered products in the response with the key `"product"`.
+            // Save new inventory
+            Inventory savedInventory = inventoryRepository.save(inventory);
+            response.put("message", "Inventory saved successfully");
+            response.put("inventory", savedInventory);
 
+            return ResponseEntity.status(HttpStatus.CREATED).body(response);
 
-// 7. Define the `searchProduct` Method:
-//    - This method handles HTTP GET requests to search for products by name within a specific store.
-//    - It uses `name` and `storeId` as parameters and searches for products that match the `name` in the specified store.
-//    - The search results are returned in the response with the key `"product"`.
+        } catch (Exception e) {
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("message", "Error saving inventory: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
+        }
+    }
 
+    @GetMapping("/store/{storeId}")
+    public ResponseEntity<Map<String, Object>> getAllProducts(@PathVariable Long storeId) {
+        try {
+            List<Inventory> inventories = inventoryRepository.findByStoreId(storeId);
 
-// 8. Define the `removeProduct` Method:
-//    - This method handles HTTP DELETE requests to delete a product by its ID.
-//    - It first validates if the product exists. If it does, it deletes the product from the `ProductRepository` and also removes the related inventory entry from the `InventoryRepository`.
-//    - Returns a success message with the key `"message"` indicating successful deletion.
+            List<Product> products = inventories.stream()
+                    .map(Inventory::getProduct)
+                    .collect(Collectors.toList());
 
+            Map<String, Object> response = new HashMap<>();
+            response.put("products", products);
 
-// 9. Define the `validateQuantity` Method:
-//    - This method handles HTTP GET requests to validate if a specified quantity of a product is available in stock for a given store.
-//    - It checks the inventory for the product in the specified store and compares it to the requested quantity.
-//    - If sufficient stock is available, return `true`; otherwise, return `false`.
+            return ResponseEntity.ok(response);
 
+        } catch (Exception e) {
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("message", "Error retrieving products: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
+        }
+    }
+
+    @GetMapping("/filter/{category}/{name}")
+    public ResponseEntity<Map<String, Object>> getProductName(
+            @PathVariable String category,
+            @PathVariable String name) {
+
+        try {
+            List<Product> products;
+
+            if ("null".equals(category) && "null".equals(name)) {
+                products = productRepository.findAll();
+            } else if ("null".equals(category)) {
+                products = productRepository.findProductBySubName(name);
+            } else if ("null".equals(name)) {
+                products = productRepository.findByCategory(category);
+            } else {
+                products = productRepository.findProductBySubNameAndCategory(name, category);
+            }
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("product", products);
+
+            return ResponseEntity.ok(response);
+
+        } catch (Exception e) {
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("message", "Error filtering products: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
+        }
+    }
+
+    @GetMapping("/search")
+    public ResponseEntity<Map<String, Object>> searchProduct(
+            @RequestParam String name,
+            @RequestParam Long storeId) {
+
+        try {
+            List<Product> products = productRepository.findByNameLike(storeId, name);
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("product", products);
+
+            return ResponseEntity.ok(response);
+
+        } catch (Exception e) {
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("message", "Error searching products: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
+        }
+    }
+
+    @DeleteMapping("/product/{id}")
+    public ResponseEntity<Map<String, Object>> removeProduct(@PathVariable Long id) {
+        try {
+            // Validate product exists
+            if (!serviceClass.ValidateProductId(id)) {
+                Map<String, Object> errorResponse = new HashMap<>();
+                errorResponse.put("message", "Product not found with ID: " + id);
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorResponse);
+            }
+
+            // Delete inventory records first
+            inventoryRepository.deleteByProductId(id);
+
+            // Delete the product
+            productRepository.deleteById(id);
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("message", "Product and related inventory deleted successfully");
+
+            return ResponseEntity.ok(response);
+
+        } catch (Exception e) {
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("message", "Error deleting product: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
+        }
+    }
+
+    @GetMapping("/validate")
+    public ResponseEntity<Map<String, Object>> validateQuantity(
+            @RequestParam Long productId,
+            @RequestParam Long storeId,
+            @RequestParam Integer quantity) {
+
+        try {
+            // Get the product
+            Product product = productRepository.findById(productId)
+                    .orElseThrow(() -> new RuntimeException("Product not found with ID: " + productId));
+
+            // Get the store - we need to create a store object or find it
+            // For now, let's assume we can create a store with the ID
+            com.project.code.Model.Store store = new com.project.code.Model.Store();
+            store.setId(storeId);
+
+            // Find inventory for this product and store
+            Inventory inventory = inventoryRepository.findByStoreAndProduct(store, product)
+                    .orElse(null);
+
+            boolean isAvailable = false;
+            if (inventory != null) {
+                isAvailable = inventory.getStockLevel() >= quantity;
+            }
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("available", isAvailable);
+            response.put("requestedQuantity", quantity);
+            if (inventory != null) {
+                response.put("availableStock", inventory.getStockLevel());
+            } else {
+                response.put("availableStock", 0);
+            }
+
+            return ResponseEntity.ok(response);
+
+        } catch (RuntimeException e) {
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("message", e.getMessage());
+            errorResponse.put("available", false);
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorResponse);
+        } catch (Exception e) {
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("message", "Error validating quantity: " + e.getMessage());
+            errorResponse.put("available", false);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
+        }
+    }
 }

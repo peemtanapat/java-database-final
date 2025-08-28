@@ -24,7 +24,6 @@ public class PlaceOrderRequestDTO {
         this.customerPhone = customerPhone;
         this.datetime = datetime;
         this.purchaseProduct = purchaseProduct;
-        this.totalPrice = 1.00; // TODO: fix
     }
 
     public Long getStoreId() {
