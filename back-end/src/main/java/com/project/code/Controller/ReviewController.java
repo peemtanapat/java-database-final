@@ -25,7 +25,7 @@ import lombok.RequiredArgsConstructor;
 
 @RequiredArgsConstructor
 @RestController
-@RequestMapping("/reviews")
+@RequestMapping("/api/v1/reviews")
 public class ReviewController {
 
     private final ReviewService reviewService;
@@ -147,7 +147,7 @@ public class ReviewController {
         }
     }
 
-    @GetMapping("/product/{productId}")
+    @GetMapping("/api/v1/products/{productId}")
     public ResponseEntity<Map<String, Object>> getReviewsByProduct(@PathVariable Long productId) {
         try {
             List<Review> reviews = reviewService.getReviewsByProduct(productId);

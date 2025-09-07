@@ -19,7 +19,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 
 @RequiredArgsConstructor
 @RestController
-@RequestMapping("/store")
+@RequestMapping("/api/v1/stores")
 public class StoreController {
 
     private final OrderService orderService;

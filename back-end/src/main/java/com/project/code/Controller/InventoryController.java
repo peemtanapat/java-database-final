@@ -28,7 +28,7 @@ import lombok.RequiredArgsConstructor;
 
 @RequiredArgsConstructor
 @RestController
-@RequestMapping("/inventory")
+@RequestMapping("/api/v1/inventories")
 public class InventoryController {
 
     private final ProductRepository productRepository;
@@ -96,7 +96,7 @@ public class InventoryController {
         }
     }
 
-    @GetMapping("/store/{storeId}")
+    @GetMapping("/stores/{storeId}")
     public ResponseEntity<Map<String, Object>> getAllProducts(@PathVariable Long storeId) {
         try {
             List<Inventory> inventories = inventoryRepository.findByStoreId(storeId);
@@ -167,7 +167,7 @@ public class InventoryController {
         }
     }
 
-    @DeleteMapping("/product/{id}")
+    @DeleteMapping("/api/v1/products/{id}")
     public ResponseEntity<Map<String, Object>> removeProduct(@PathVariable Long id) {
         try {
             // Validate product exists
